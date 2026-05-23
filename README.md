@@ -61,7 +61,7 @@ Because BB renders all module colours as `var(--fl-global-*)` references, a sing
 
 ```bash
 cd wp-content/plugins
-git clone https://github.com/your-username/bb-custom-dark-mode.git
+git clone https://github.com/ttldsgn/bb-custom-dark-mode.git
 ```
 
 Activate the plugin from **Plugins → Installed Plugins**.
