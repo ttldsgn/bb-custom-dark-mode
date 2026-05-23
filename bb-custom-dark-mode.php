@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: BB Custom Dark Mode (v3.5 - Pro)
+ * Plugin Name: BB Custom Dark Mode
  * Description: Pro-grade Dark Mode engine for Beaver Builder. Full mapping, Exclusions, and Strict Accessibility.
  * Version: 3.6.2
  * Author: ttldsgn
