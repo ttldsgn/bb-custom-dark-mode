@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BB Custom Dark Mode
  * Description: Pro-grade Dark Mode engine for Beaver Builder. Full mapping, Exclusions, and Strict Accessibility.
- * Version: 3.6.2
+ * Version: 3.7
  * Author: ttldsgn
  */
 
@@ -205,6 +205,11 @@ class BBCustomDarkMode {
         // Inline styles — scoped to the plugin page only.
         $admin_css = '
             .bb-dm-row { background:#fff; border:1px solid #ccd0d4; padding:15px; margin-bottom:10px; display:flex; align-items:center; gap:15px; border-radius:4px; }
+            .bb-dm-row.is-sortable { cursor:default; }
+            .bb-dm-drag-handle { cursor:grab; color:#999; flex-shrink:0; line-height:1; font-size:18px; user-select:none; padding:0 4px; }
+            .bb-dm-drag-handle:active { cursor:grabbing; }
+            .bb-dm-row.ui-sortable-helper { box-shadow:0 4px 12px rgba(0,0,0,0.15); border-color:#2271b1; opacity:0.95; }
+            .bb-dm-row.ui-sortable-placeholder { border:2px dashed #2271b1; background:#f0f6ff; visibility:visible !important; }
             .bb-swatch  { width:24px; height:24px; border-radius:4px; border:1px solid #ccc; display:inline-block; vertical-align:middle; background:#eee; }
             .bb-dm-remove { color:#d63638; cursor:pointer; text-decoration:underline; font-size:12px; margin-left:auto; }
             .bb-dm-card { background:#f6f7f7; border:1px solid #ccd0d4; padding:20px; border-radius:8px; margin-bottom:20px; }
@@ -220,8 +225,8 @@ class BBCustomDarkMode {
         wp_register_script(
             'bb-dark-mode-admin',
             false,        // no external file
-            [ 'jquery' ],
-            '3.5',
+            [ 'jquery', 'jquery-ui-sortable' ],
+            '3.7',
             true          // footer = true
         );
         wp_enqueue_script( 'bb-dark-mode-admin' );
@@ -268,11 +273,37 @@ class BBCustomDarkMode {
                     // Live-update when the user picks a new colour.
                     $(document).on("change", ".bb-color-select", function() { updateSwatch(this); });
 
+                    /**
+                     * Reindex all [pairs][N] field names in #bb-repeater after
+                     * a drag-drop reorder or a row addition/removal, so the order
+                     * submitted to PHP matches the visual order on screen.
+                     */
+                    function reindexPairs() {
+                        $("#bb-repeater .bb-dm-row").each(function(i) {
+                            $(this).find("select").each(function() {
+                                var n = $(this).attr("name");
+                                if (n) $(this).attr("name", n.replace(/\[pairs\]\[\d+\]/, "[pairs][" + i + "]"));
+                            });
+                        });
+                    }
+
+                    // Make the pairs container sortable via drag handle.
+                    $("#bb-repeater").sortable({
+                        handle:      ".bb-dm-drag-handle",
+                        axis:        "y",
+                        placeholder: "bb-dm-row ui-sortable-placeholder",
+                        forcePlaceholderSize: true,
+                        tolerance:   "pointer",
+                        stop: function() {
+                            reindexPairs();
+                        }
+                    });
+
                     // Add a new repeater row (clone first row, reset its values).
                     $(".add-row-btn").on("click", function() {
-                        var target    = $(this).data("target");
+                        var target     = $(this).data("target");
                         var $container = $("#" + target);
-                        var $firstRow = $container.find(".bb-dm-row").first();
+                        var $firstRow  = $container.find(".bb-dm-row").first();
                         if (!$firstRow.length) return;
 
                         var $row  = $firstRow.clone();
@@ -284,6 +315,11 @@ class BBCustomDarkMode {
                         });
                         $row.find(".bb-swatch").css("background-color", "#eeeeee");
                         $container.append($row);
+
+                        // Re-init sortable to include the new row.
+                        if (target === "bb-repeater") {
+                            $("#bb-repeater").sortable("refresh");
+                        }
                     });
 
                     // Remove a row — always keep at least one.
@@ -291,6 +327,10 @@ class BBCustomDarkMode {
                         var $container = $(this).closest(".color-container");
                         if ($container.find(".bb-dm-row").length > 1) {
                             $(this).closest(".bb-dm-row").remove();
+                            // Reindex after removal if this is the pairs container.
+                            if ($container.attr("id") === "bb-repeater") {
+                                reindexPairs();
+                            }
                         }
                     });
                 });
@@ -380,7 +420,8 @@ class BBCustomDarkMode {
                     <h2>2. Global Colour Mapping</h2>
                     <div id="bb-repeater" class="color-container">
                         <?php foreach ( $pairs as $i => $pair ) : ?>
-                            <div class="bb-dm-row">
+                            <div class="bb-dm-row is-sortable">
+                                <span class="bb-dm-drag-handle" title="Drag to reorder" aria-hidden="true">&#8597;</span>
                                 <div>
                                     <span class="bb-swatch"></span>
                                     <select name="<?php echo esc_attr( $this->option_name ); ?>[pairs][<?php echo (int) $i; ?>][light]" class="bb-color-select">
