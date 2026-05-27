@@ -4,6 +4,16 @@ All notable changes to BB Custom Dark Mode are documented here.
 
 ---
 
+## [3.7.0] — 2026-05-27
+
+### Added
+- Drag & drop sorting for Global Colour Mapping pairs. Rows can be
+  reordered by grabbing the ↕ handle on the left. Order is preserved
+  on save. Uses jQuery UI Sortable which is bundled with WordPress
+  admin — no extra library required.
+
+---
+
 ## [3.6.2] — 2025-05-23
 
 ### Fixed
