@@ -39,6 +39,12 @@ Because BB renders all module colours as `var(--fl-global-*)` references, a sing
 
 ---
 
+## Screenshot
+
+![Settings screen](assets/screenshot.jpg)
+
+---
+
 ## Requirements
 
 | | Minimum |
