@@ -4,6 +4,25 @@ All notable changes to BB Custom Dark Mode are documented here.
 
 ---
 
+## [3.7.2] — 2026-05-31
+
+### Fixed
+- System preference sync now works correctly using a three-state
+  localStorage model: "dark", "light", or null (no preference).
+  Previously, any manual toggle permanently overrode system sync
+  because "light" was stored and never cleared.
+- Stored "light" value no longer blocks system dark mode from
+  activating on fresh visits.
+
+### Added
+- Live OS preference tracking — if the user has no manual preference
+  and changes their OS theme while the page is open, the page
+  responds immediately without a reload.
+- When system sync is on and the user toggles back to match their OS
+  preference, localStorage is cleared so system sync resumes control.
+
+---  
+
 ## [3.7.0] — 2026-05-27
 
 ### Added
