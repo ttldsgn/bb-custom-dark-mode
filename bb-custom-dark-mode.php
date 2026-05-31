@@ -2,8 +2,8 @@
 /**
  * Plugin Name: BB Custom Dark Mode
  * Description: Pro-grade Dark Mode engine for Beaver Builder. Full mapping, Exclusions, and Strict Accessibility.
- * Version: 3.7
- * Author: ttldsgn
+ * Version: 3.7.2
+ * Author: totaldsgn
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -24,6 +24,7 @@ class BBCustomDarkMode {
         add_action( 'admin_init',          [ $this, 'register_settings' ] );
         add_action( 'admin_init',          [ $this, 'handle_export_import' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
+        add_action( 'wp_head',             [ $this, 'inject_anti_flash_script' ], 1 );
         add_action( 'wp_head',             [ $this, 'inject_dynamic_css' ], 100 );
         add_action( 'wp_enqueue_scripts',  [ $this, 'enqueue_assets' ] );
         add_shortcode( 'bb_dark_mode_toggle', [ $this, 'toggle_shortcode' ] );
@@ -673,6 +674,46 @@ class BBCustomDarkMode {
     }
 
     // -------------------------------------------------------------------------
+    // Anti-flash head script
+    // -------------------------------------------------------------------------
+
+    /**
+     * Injected at wp_head priority 1 — before any content or styles render.
+     * Reads localStorage and prefers-color-scheme and applies body.dark-mode
+     * immediately, so the browser never paints a light-mode frame first.
+     * Kept intentionally tiny — no jQuery, no dependencies.
+     */
+    public function inject_anti_flash_script(): void {
+        $saved = (array) get_option( $this->option_name, [] );
+        $sync  = ! empty( $saved['system_sync'] ) ? 'true' : 'false';
+        ?>
+        <script>
+        (function() {
+            try {
+                var stored  = localStorage.getItem('bb_pref_theme'); // 'dark' | 'light' | null
+                var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var sync    = <?php echo $sync; ?>;
+
+                var shouldBeDark = (stored === 'dark') ||
+                                   (stored === null && sync && sysDark);
+
+                if (shouldBeDark) {
+                    document.documentElement.classList.add('dark-mode-pending');
+                    document.addEventListener('DOMContentLoaded', function() {
+                        document.documentElement.classList.remove('dark-mode-pending');
+                        document.body.classList.add('dark-mode');
+                    });
+                }
+            } catch(e) {}
+        })();
+        </script>
+        <style>
+        html.dark-mode-pending body { visibility: hidden; }
+        </style>
+        <?php
+    }
+
+    // -------------------------------------------------------------------------
     // Front-end dynamic CSS
     // -------------------------------------------------------------------------
 
@@ -826,35 +867,59 @@ body.dark-mode .bb-dm-toggle .moon-icon { display: block; }
             '(function($) {
                 "use strict";
 
-                var config = window.bbDarkModeConfig || { systemSync: 0 };
+                var config  = window.bbDarkModeConfig || { systemSync: 0 };
+                var sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
                 /**
-                 * Toggle dark mode on/off, persist preference, update ARIA.
-                 * Accepts the button element so we can blur it immediately —
-                 * this prevents it staying in :focus after a mouse click, which
-                 * causes the theme/browser focus ring to show when the mouse leaves.
+                 * Toggle dark mode on/off.
+                 *
+                 * Three-state localStorage model:
+                 *   "dark"  — user explicitly chose dark
+                 *   "light" — user explicitly chose light
+                 *   null    — no manual preference; system sync decides
+                 *
+                 * When system sync is on and the user toggles back to match
+                 * the system preference, we clear the stored value so system
+                 * sync resumes control automatically on future visits.
                  */
                 window.bbDarkModeToggle = function(el) {
                     var isDark = $("body").toggleClass("dark-mode").hasClass("dark-mode");
                     $(".bb-dm-toggle").attr("aria-pressed", String(isDark));
                     try {
-                        localStorage.setItem("bb_pref_theme", isDark ? "dark" : "light");
+                        if (config.systemSync && isDark === sysDark) {
+                            // User toggled back to match system — let system sync take over again.
+                            localStorage.removeItem("bb_pref_theme");
+                        } else {
+                            localStorage.setItem("bb_pref_theme", isDark ? "dark" : "light");
+                        }
                     } catch (e) {}
-                    // Release focus so the button does not stay in :focus state
-                    // after a mouse click. Keyboard users are unaffected because
-                    // they never trigger mouseleave after activating via Enter/Space.
                     if (el && el.blur) { el.blur(); }
                 };
 
                 $(function() {
-                    var stored  = "";
-                    try { stored = localStorage.getItem("bb_pref_theme") || ""; } catch (e) {}
-                    var sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-                    var active  = (stored === "dark") || (!stored && config.systemSync && sysDark);
+                    var stored      = null;
+                    try { stored = localStorage.getItem("bb_pref_theme"); } catch (e) {}
 
-                    if (active) {
+                    // Three-state check — mirrors the anti-flash script exactly.
+                    var shouldBeDark = (stored === "dark") ||
+                                       (stored === null && config.systemSync && sysDark);
+
+                    if (shouldBeDark) {
                         $("body").addClass("dark-mode");
                         $(".bb-dm-toggle").attr("aria-pressed", "true");
+                    }
+
+                    // Keep in sync if the OS preference changes while the page is open.
+                    if (config.systemSync) {
+                        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(e) {
+                            var manualPref = null;
+                            try { manualPref = localStorage.getItem("bb_pref_theme"); } catch(err) {}
+                            // Only follow the system change if the user has no manual preference.
+                            if (manualPref === null) {
+                                $("body").toggleClass("dark-mode", e.matches);
+                                $(".bb-dm-toggle").attr("aria-pressed", String(e.matches));
+                            }
+                        });
                     }
                 });
             }(jQuery));'
