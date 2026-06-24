@@ -50,6 +50,11 @@ class BBCustomDarkMode_Colors {
 			$name      = isset( $data['name'] ) ? $data['name'] : ( isset( $data['label'] ) ? $data['label'] : '' );
 			$color_val = isset( $data['color'] ) ? $data['color'] : ( isset( $data['hex'] ) ? $data['hex'] : '' );
 
+			// Normalise hex missing # for display (BB sometimes stores raw hex).
+			if ( '' !== $color_val && '#' !== $color_val[0] && preg_match( '/^[a-fA-F0-9]{6}$/', $color_val ) ) {
+				$color_val = '#' . $color_val;
+			}
+
 			if ( '' === $name ) {
 				continue;
 			}
@@ -120,22 +125,21 @@ class BBCustomDarkMode_Colors {
 		$current = $this->get_raw_colors();
 		$found   = false;
 
-		foreach ( $current as $key => &$item ) {
+		foreach ( $current as $key => $item ) {
 			if ( isset( $item['slug'] ) && $item['slug'] === $slug ) {
 				if ( isset( $updates['name'] ) ) {
-					$item['name'] = sanitize_text_field( $updates['name'] );
+					$current[ $key ]['name'] = sanitize_text_field( $updates['name'] );
 				}
 				if ( isset( $updates['color'] ) ) {
-					$item['color'] = $this->normalize_hex( $updates['color'] );
+					$current[ $key ]['color'] = $this->normalize_hex( $updates['color'] );
 				}
 				if ( isset( $updates['slug'] ) ) {
-					$item['slug'] = $this->sanitize_slug( $updates['slug'] );
+					$current[ $key ]['slug'] = $this->sanitize_slug( $updates['slug'] );
 				}
 				$found = true;
 				break;
 			}
 		}
-		unset( $item );
 
 		if ( ! $found ) {
 			return array();
@@ -216,13 +220,20 @@ class BBCustomDarkMode_Colors {
 			if ( ! isset( $existing->colors ) ) {
 				$existing->colors = new stdClass();
 			}
-			$existing->colors->items = $colors;
+			if ( isset( $existing->colors->items ) ) {
+				$existing->colors->items = $colors;
+			} else {
+				$existing->colors = $colors;
+			}
 		} else {
 			if ( ! is_array( $existing ) ) {
 				$existing = array();
 			}
-			$existing['colors']          = isset( $existing['colors'] ) && is_array( $existing['colors'] ) ? $existing['colors'] : array();
-			$existing['colors']['items'] = $colors;
+			if ( isset( $existing['colors']['items'] ) ) {
+				$existing['colors']['items'] = $colors;
+			} else {
+				$existing['colors'] = $colors;
+			}
 		}
 
 		update_option( self::BB_OPTION_KEY, $existing );
