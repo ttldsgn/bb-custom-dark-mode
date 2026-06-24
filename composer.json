@@ -1,0 +1,22 @@
+{
+  "name": "ttldsgn/bb-custom-dark-mode",
+  "description": "Pro-grade Dark Mode engine for Beaver Builder. Full mapping, Exclusions, and Strict Accessibility.",
+  "type": "wordpress-plugin",
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "squizlabs/php_codesniffer": "*",
+    "wp-coding-standards/wpcs": "*",
+    "dealerdirect/phpcodesniffer-composer-installer": "*"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  },
+  "scripts": {
+    "lint": "vendor/bin/phpcs .",
+    "fix": "vendor/bin/phpcbf ."
+  }
+}
