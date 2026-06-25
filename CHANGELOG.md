@@ -4,6 +4,28 @@ All notable changes to BB Custom Dark Mode are documented here.
 
 ---
 
+## [3.9.0] — 2026-06-25
+
+### Added
+- **Global Colours Manager** — add, edit, and delete Beaver Builder global
+  colours directly from the plugin settings page. Changes sync instantly with
+  BB's Global Styles storage, so colours created here appear in BB's own
+  colour picker and vice versa. Supports hex, rgb, rgba, and hsl values
+  with a built-in alpha-channel Iris color picker.
+- Tabbed settings UI with session persistence — **BB Global Colours**,
+  **Colour Mapping**, and **Settings & Styling** each have their own tab.
+  Save Changes saves all tabs at once.
+- WordPress Iris color picker with alpha/opacity support (replaces native
+  `<input type="color">`).
+- **Buy Me A Coffee** donation badge in readme.
+
+### Changed
+- Admin page restructured into three tabs for clearer organisation.
+- Section cards now use white backgrounds with `#ddd` borders and a
+  constrained `max-width: 980px` layout.
+
+---
+
 ## [3.7.2] — 2026-05-31
 
 ### Fixed
