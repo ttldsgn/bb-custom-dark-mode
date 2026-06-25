@@ -316,17 +316,34 @@
 		// Store original row HTML before replacing for cancel.
 		$row.data('bbdm-original-html', $row.html());
 
-		$row.addClass('bb-dm-inline-edit').html(
-			'<td><span class="color-swatch" style="background-color:' +
-			formatColor(hex) + '"></span></td>' +
-			'<td><input type="text" class="edit-name" value="' + name + '"></td>' +
-			'<td><code>' + slug + '</code></td>' +
-			'<td><input type="text" class="edit-hex" value="' + hex + '"></td>' +
-			'<td class="row-actions">' +
-			'<button type="button" class="bb-dm-save-edit" data-slug="' + slug + '">Save</button> | ' +
-			'<button type="button" class="bb-dm-cancel-edit">Cancel</button>' +
-			'</td>'
-		);
+		$row.addClass('bb-dm-inline-edit').empty();
+
+		// Swatch column.
+		$('<td>').append(
+			$('<span class="color-swatch">').css('background-color', formatColor(hex))
+		).appendTo($row);
+
+		// Name input.
+		$('<td>').append(
+			$('<input type="text" class="edit-name">').val(name)
+		).appendTo($row);
+
+		// Slug (read-only code).
+		$('<td>').append(
+			$('<code>').text(slug)
+		).appendTo($row);
+
+		// Hex input.
+		$('<td>').append(
+			$('<input type="text" class="edit-hex">').val(hex)
+		).appendTo($row);
+
+		// Actions column.
+		$('<td class="row-actions">').append(
+			$('<button type="button" class="bb-dm-save-edit">').attr('data-slug', slug).text('Save'),
+			' | ',
+			$('<button type="button" class="bb-dm-cancel-edit">').text('Cancel')
+		).appendTo($row);
 	});
 
 	// -- Cancel inline edit ------------------------------------------------

@@ -240,7 +240,7 @@ body.dark-mode .bb-dm-toggle .moon-icon { display: block; }
 	 */
 	public function enqueue_assets() {
 		$saved = (array) get_option( $this->option_name, array() );
-		$sync  = isset( $saved['system_sync'] ) ? 1 : 0;
+		$sync  = ! empty( $saved['system_sync'] ) ? 1 : 0;
 
 		wp_enqueue_script(
 			$this->script_handle,
@@ -275,7 +275,7 @@ body.dark-mode .bb-dm-toggle .moon-icon { display: block; }
 		?>
 		<button class="bb-dm-toggle"
 				onclick="bbDarkModeToggle(this)"
-				aria-label="Toggle Dark Mode"
+				aria-label="<?php echo esc_attr__( 'Toggle Dark Mode', 'bb-dark-mode' ); ?>"
 				aria-pressed="false"
 				type="button">
 			<svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">

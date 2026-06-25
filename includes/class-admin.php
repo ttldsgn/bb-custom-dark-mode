@@ -299,35 +299,23 @@ class BBCustomDarkMode_Admin {
 			$this->export_nonce
 		);
 
-		// Build dropdown options once for reuse.
-		$color_options_html = '<option value="" data-color="">&hellip;</option>';
-		foreach ( $colors as $c ) {
-			$color_options_html .= sprintf(
-				'<option value="%s" data-color="%s">%s</option>',
-				esc_attr( $c['slug'] ),
-				esc_attr( $c['color'] ),
-				esc_html( $c['name'] )
-			);
-		}
-
 		// Helper to output a colour dropdown with saved value.
-		$render_select = function ( $name, $selected_slug, $default_label, $show_colors = true ) use ( $color_options_html ) {
+		$render_select = function ( $name, $selected_slug, $default_label, $show_colors = true ) use ( $colors ) {
 			?>
 			<select name="<?php echo esc_attr( $name ); ?>" class="bb-color-select">
 				<option value="" data-color="">
 					<?php echo esc_html( $default_label ); ?>
 				</option>
 				<?php if ( $show_colors ) : ?>
-					<?php echo $color_options_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- already escaped above. ?>
+					<option value="" data-color="">&hellip;</option>
+					<?php foreach ( $colors as $c ) : ?>
+						<option value="<?php echo esc_attr( $c['slug'] ); ?>" data-color="<?php echo esc_attr( $c['color'] ); ?>"
+							<?php selected( $c['slug'], $selected_slug ); ?>>
+							<?php echo esc_html( $c['name'] ); ?>
+						</option>
+					<?php endforeach; ?>
 				<?php endif; ?>
 			</select>
-			<script>
-				// Set the saved value after the DOM is rendered.
-				(function() {
-					var sel = document.querySelector('select[name="<?php echo esc_js( $name ); ?>"]');
-					if (sel) { sel.value = <?php echo wp_json_encode( $selected_slug ); ?>; }
-				})();
-			</script>
 			<?php
 		};
 		?>

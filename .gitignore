@@ -21,6 +21,3 @@ sftp-config.json
 *.cache
 *.log
 node_modules/
-
-#Custom
-bb-plugin/
