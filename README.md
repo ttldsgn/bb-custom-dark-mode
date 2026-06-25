@@ -66,7 +66,7 @@ Click **Edit** on any colour in the table to rename it or change its value inlin
 
 ## Screenshot
 
-![Settings screen](assets/Screenshot.jpg)
+![Settings screen](assets/Screenshot349.jpg)
 
 ---
 
