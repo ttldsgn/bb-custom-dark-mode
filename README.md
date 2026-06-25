@@ -2,10 +2,11 @@
 
 A pro-grade dark mode engine for [Beaver Builder](https://www.wpbeaverbuilder.com/) that maps your existing Global Colour palette to dark-mode equivalents — no hardcoded hex values, no separate colour management.
 
-![Version](https://img.shields.io/badge/version-3.6.2-blue)
+![Version](https://img.shields.io/badge/version-3.9.0-blue)
 ![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-informational)
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B-informational)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
 
 ---
 
@@ -25,6 +26,7 @@ Because BB renders all module colours as `var(--fl-global-*)` references, a sing
 
 ## Features
 
+- **Global Colours Manager** — add, edit, and delete Beaver Builder global colours directly from the plugin settings page. Changes are written to BB's own Global Styles storage, so colours created here appear in BB's colour picker and vice versa. Supports hex, rgb, rgba, and hsl values with a full Iris colour picker including alpha channel.
 - **Global Colour Mapping** — visually map any BB Global Colour to its dark-mode counterpart using a live swatch picker
 - **Site Background Mapping** — dedicated light → dark background override for `body` and `.fl-page-content`
 - **CSS Variable Bridge** — map any CSS custom property (e.g. from a child theme) to a BB Global Colour for dark mode
@@ -36,6 +38,29 @@ Because BB renders all module colours as `var(--fl-global-*)` references, a sing
 - **Export / Import** — back up and restore all settings as a JSON file
 - **Accessibility** — `aria-pressed` state management, `:focus-visible` keyboard ring, programmatic `blur()` on mouse click to prevent stuck focus states
 - **Security hardened** — nonce-verified export/import, capability checks, full input sanitization on every field
+
+---
+
+## Global Colours Manager
+
+The **BB Global Colours** tab lets you manage your Beaver Builder colour palette without leaving the settings page.
+
+**How it works:**
+
+BB stores its global colours in `_fl_builder_styles` under the `colors` array. Our plugin reads from and writes to that same storage using `FLBuilderGlobalStyles::get_settings()` and `save_settings()`. When you add a colour here:
+
+1. It's saved to BB's internal colour palette
+2. It appears immediately in BB's **Global Styles → Colors** page
+3. It becomes available in all light/dark mapping dropdowns
+4. Editing or deleting a colour here updates it everywhere
+
+**Colour format support:**
+
+The Iris color picker accepts hex (`#ff0000`), rgb (`rgb(255,0,0)`), rgba (`rgba(255,0,0,0.5)`), and hsl (`hsl(0,100%,50%)`) values. The alpha slider lets you create semi-transparent colours — the output automatically switches between `#rrggbb` at full opacity and `rgba(r,g,b,a)` when transparency is applied.
+
+**Inline editing:**
+
+Click **Edit** on any colour in the table to rename it or change its value inline. Click **Delete** to remove it permanently from BB's palette.
 
 ---
 
@@ -76,21 +101,29 @@ Activate the plugin from **Plugins → Installed Plugins**.
 
 ## Configuration
 
-Go to **Settings → BB Dark Mode** in your WordPress admin.
+Go to **Settings → BB Dark Mode** in your WordPress admin. The settings are organised into three tabs:
 
-### 1 — Site Background Mapping
+### Tab: BB Global Colours
+
+Add, edit, or delete Beaver Builder global colours. Fill in a **Name**, pick a **Colour** using the Iris picker (with optional alpha/opacity), and optionally provide a **Slug** (auto-generated if left blank). Click **Add Global Colour** to save it to BB's palette.
+
+### Tab: Colour Mapping
+
+#### Site Background Mapping
 
 Pick which BB Global Colour is used as the light-mode page background, and which is the dark-mode replacement. Applied to `body` and `.fl-page-content`.
 
-### 2 — Global Colour Mapping
+#### Global Colour Mapping
 
-Add as many light → dark pairs as you need. Each pair tells the plugin: *"in dark mode, replace this light colour variable with this dark colour variable."* Use the **+ Add Pair** button to add rows; remove unwanted rows with the **Remove** link.
+Add as many light → dark pairs as you need. Each pair tells the plugin: *"in dark mode, replace this light colour variable with this dark colour variable."* Use the **+ Add Pair** button to add rows; drag the ↕ handle to reorder; remove unwanted rows with the **Remove** link.
 
-### 3 — CSS Variable Bridge
+#### CSS Variable Bridge
 
 For CSS variables that live outside BB Global Styles (child theme, third-party plugin), type the variable name (e.g. `--my-heading-color`) and select the BB Global Colour it should resolve to in dark mode.
 
-### 4 — Settings & Exclusions
+### Tab: Settings & Styling
+
+#### Settings & Exclusions
 
 | Option | Description |
 |---|---|
@@ -98,7 +131,7 @@ For CSS variables that live outside BB Global Styles (child theme, third-party p
 | Exclude Post Types | Don't load dark mode CSS on selected post types |
 | Exclude by IDs | Comma-separated post/page IDs to exclude (e.g. `12, 45`) |
 
-### 5 — Toggle Button Styling
+#### Toggle Button Styling
 
 | Option | Description |
 |---|---|
@@ -173,3 +206,5 @@ Released under the [GNU General Public License v2.0](https://www.gnu.org/license
 ## Author
 
 **ttldsgn**
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)

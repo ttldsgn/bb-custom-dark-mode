@@ -2,9 +2,12 @@
 /**
  * BB Custom Dark Mode — Global Colour Manager
  *
- * Reads from and writes to Beaver Builder's global styles option so colours
+ * Reads from and writes to Beaver Builder's global styles storage so colours
  * created here appear immediately in BB's Global Styles → Colors page and
  * vice versa.
+ *
+ * Uses FLBuilderGlobalStyles::get_settings() and save_settings() directly
+ * to ensure full compatibility with BB's internal data format.
  *
  * @package BB_Custom_Dark_Mode
  * @since   3.8.0
@@ -20,18 +23,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class BBCustomDarkMode_Colors {
 
 	/**
-	 * Option key Beaver Builder uses for its global settings.
-	 *
-	 * @since 3.8.0
-	 * @var   string
-	 */
-	const BB_OPTION_KEY = '_fl_builder_global_settings';
-
-	/**
 	 * Pull the global colour palette from Beaver Builder, if available.
 	 *
+	 * BB stores colours under _fl_builder_styles as `colors` → array of
+	 * { label, color, uid } maps.
+	 *
 	 * @since  3.8.0
-	 * @return array[] Array of { 'name', 'slug', 'color' } maps.
+	 * @return array[] Array of { 'label', 'slug', 'color' } maps.
 	 */
 	public function get_bb_colors() {
 		$color_list = array();
@@ -40,31 +38,33 @@ class BBCustomDarkMode_Colors {
 			return $color_list;
 		}
 
-		$settings = FLBuilderGlobalStyles::get_settings();
-		$items    = isset( $settings->colors->items )
-			? $settings->colors->items
-			: ( isset( $settings->colors ) ? $settings->colors : array() );
+		$settings = FLBuilderGlobalStyles::get_settings( false );
+		$colors   = isset( $settings->colors ) ? $settings->colors : array();
 
-		foreach ( (array) $items as $item ) {
-			$data      = (array) $item;
-			$name      = isset( $data['name'] ) ? $data['name'] : ( isset( $data['label'] ) ? $data['label'] : '' );
-			$color_val = isset( $data['color'] ) ? $data['color'] : ( isset( $data['hex'] ) ? $data['hex'] : '' );
+		foreach ( (array) $colors as $item ) {
+			$data = (array) $item;
 
-			// Normalise hex missing # for display (BB sometimes stores raw hex).
-			if ( '' !== $color_val && '#' !== $color_val[0] && preg_match( '/^[a-fA-F0-9]{6}$/', $color_val ) ) {
-				$color_val = '#' . $color_val;
-			}
+			// BB uses 'label' as the colour display name.
+			$label = isset( $data['label'] ) ? $data['label'] : ( isset( $data['name'] ) ? $data['name'] : '' );
+			$color = isset( $data['color'] ) ? $data['color'] : '';
 
-			if ( '' === $name ) {
+			if ( '' === $label ) {
 				continue;
 			}
 
-			$raw_slug = isset( $data['slug'] ) ? $data['slug'] : sanitize_title( $name );
+			// Use stored slug if present, otherwise derive from label.
+			$slug = isset( $data['slug'] ) ? $data['slug'] : FLBuilderGlobalStyles::label_to_key( $label );
+
+			// Normalise hex missing # for display only (BB sometimes stores raw hex).
+			$color_display = $color;
+			if ( '' !== $color_display && '#' !== $color_display[0] && ! preg_match( '/^(rgb|rgba|hsl)/', $color_display ) && preg_match( '/^[a-fA-F0-9]{6}$/', $color_display ) ) {
+				$color_display = '#' . $color_display;
+			}
 
 			$color_list[] = array(
-				'name'  => esc_html( $name ),
-				'slug'  => $this->sanitize_slug( $raw_slug ),
-				'color' => esc_attr( $color_val ),
+				'name'  => $label,
+				'slug'  => $slug,
+				'color' => $color_display,
 			);
 		}
 
@@ -76,35 +76,44 @@ class BBCustomDarkMode_Colors {
 	 *
 	 * @since  3.8.0
 	 * @param  string $name  Human-readable label.
-	 * @param  string $color Hex colour value (e.g. #ff0000).
+	 * @param  string $color Colour value (e.g. #ff0000 or rgba(0,0,0,0.5)).
 	 * @param  string $slug  Optional machine-friendly slug; auto-generated from $name if omitted.
-	 * @return array          Updated colour list, or empty array on failure.
+	 * @return array|false   Updated colour list, or false on failure.
 	 */
 	public function add_color( $name, $color, $slug = '' ) {
 		if ( ! class_exists( 'FLBuilderGlobalStyles' ) ) {
-			return array();
+			return false;
 		}
 
-		$slug  = '' !== $slug ? $this->sanitize_slug( $slug ) : sanitize_title( $name );
-		$color = $this->normalize_hex( $color );
+		$settings = FLBuilderGlobalStyles::get_settings( false );
+		$colors   = isset( $settings->colors ) ? (array) $settings->colors : array();
 
-		$current = $this->get_raw_colors();
+		$label     = sanitize_text_field( $name );
+		$safe_slug = '' !== $slug ? $this->sanitize_slug( $slug ) : FLBuilderGlobalStyles::label_to_key( $label );
 
-		// Avoid duplicate slugs — append a suffix if needed.
-		$base_slug = $slug;
-		$counter   = 1;
-		while ( $this->slug_exists( $current, $slug ) ) {
-			$slug = $base_slug . '-' . $counter;
-			$counter++;
+		// Check for duplicate slug — reject if already exists.
+		foreach ( $colors as $item ) {
+			$existing_slug = $this->get_color_slug( $item );
+			if ( $existing_slug === $safe_slug ) {
+				return false;
+			}
 		}
 
-		$current[] = array(
-			'name'  => sanitize_text_field( $name ),
-			'slug'  => $slug,
-			'color' => $color,
+		// Build the new colour item in BB's native format.
+		$new_item = array(
+			'label' => $label,
+			'color' => $this->normalize_color( $color ),
+			'uid'   => substr( md5( wp_rand() ), 0, 9 ),
 		);
 
-		$this->save_raw_colors( $current );
+		// Always store the slug so it persists across renames.
+		$new_item['slug'] = $safe_slug;
+
+		$colors[] = $new_item;
+
+		// Save via BB's own method so it handles caching, cache busting, etc.
+		$settings->colors = $colors;
+		FLBuilderGlobalStyles::save_settings( $settings );
 
 		return $this->get_bb_colors();
 	}
@@ -114,27 +123,27 @@ class BBCustomDarkMode_Colors {
 	 *
 	 * @since  3.8.0
 	 * @param  string $slug    Slug of the colour to update.
-	 * @param  array  $updates Associative array with optional keys: name, color, slug.
-	 * @return array           Updated colour list, or empty array on failure.
+	 * @param  array  $updates Associative array with optional keys: name (label), color.
+	 * @return array|false     Updated colour list, or false on failure.
 	 */
 	public function update_color( $slug, $updates ) {
 		if ( ! class_exists( 'FLBuilderGlobalStyles' ) ) {
-			return array();
+			return false;
 		}
 
-		$current = $this->get_raw_colors();
-		$found   = false;
+		$settings = FLBuilderGlobalStyles::get_settings( false );
+		$colors   = isset( $settings->colors ) ? (array) $settings->colors : array();
+		$found    = false;
 
-		foreach ( $current as $key => $item ) {
-			if ( isset( $item['slug'] ) && $item['slug'] === $slug ) {
+		foreach ( $colors as $key => $item ) {
+			$item_slug = $this->get_color_slug( $item );
+
+			if ( $item_slug === $slug ) {
 				if ( isset( $updates['name'] ) ) {
-					$current[ $key ]['name'] = sanitize_text_field( $updates['name'] );
+					$colors[ $key ]['label'] = sanitize_text_field( $updates['name'] );
 				}
 				if ( isset( $updates['color'] ) ) {
-					$current[ $key ]['color'] = $this->normalize_hex( $updates['color'] );
-				}
-				if ( isset( $updates['slug'] ) ) {
-					$current[ $key ]['slug'] = $this->sanitize_slug( $updates['slug'] );
+					$colors[ $key ]['color'] = $this->normalize_color( $updates['color'] );
 				}
 				$found = true;
 				break;
@@ -142,10 +151,11 @@ class BBCustomDarkMode_Colors {
 		}
 
 		if ( ! $found ) {
-			return array();
+			return false;
 		}
 
-		$this->save_raw_colors( $current );
+		$settings->colors = $colors;
+		FLBuilderGlobalStyles::save_settings( $settings );
 
 		return $this->get_bb_colors();
 	}
@@ -155,106 +165,57 @@ class BBCustomDarkMode_Colors {
 	 *
 	 * @since  3.8.0
 	 * @param  string $slug Slug of the colour to delete.
-	 * @return array        Updated colour list.
+	 * @return array|false  Updated colour list, or false on failure.
 	 */
 	public function delete_color( $slug ) {
 		if ( ! class_exists( 'FLBuilderGlobalStyles' ) ) {
-			return array();
+			return false;
 		}
 
-		$current  = $this->get_raw_colors();
+		$settings = FLBuilderGlobalStyles::get_settings( false );
+		$colors   = isset( $settings->colors ) ? (array) $settings->colors : array();
 		$filtered = array();
 
-		foreach ( $current as $item ) {
-			if ( isset( $item['slug'] ) && $item['slug'] === $slug ) {
+		foreach ( $colors as $item ) {
+			$item_slug = $this->get_color_slug( $item );
+
+			if ( $item_slug === $slug ) {
 				continue;
 			}
 			$filtered[] = $item;
 		}
 
-		$this->save_raw_colors( $filtered );
+		$settings->colors = $filtered;
+		FLBuilderGlobalStyles::save_settings( $settings );
 
 		return $this->get_bb_colors();
+	}
+
+	/**
+	 * Get a stable slug for a colour item.
+	 *
+	 * Uses the stored slug field if present, otherwise derives from label.
+	 *
+	 * @since  3.9.0
+	 * @param  array  $item BB colour item { label, color, uid, [slug] }.
+	 * @return string
+	 */
+	private function get_color_slug( $item ) {
+		$data = (array) $item;
+
+		// Use stored slug if available.
+		if ( isset( $data['slug'] ) && '' !== $data['slug'] ) {
+			return $this->sanitize_slug( $data['slug'] );
+		}
+
+		// Fallback to label-derived slug.
+		$label = isset( $data['label'] ) ? $data['label'] : ( isset( $data['name'] ) ? $data['name'] : '' );
+		return FLBuilderGlobalStyles::label_to_key( $label );
 	}
 
 	// -------------------------------------------------------------------------
 	// Internal helpers
 	// -------------------------------------------------------------------------
-
-	/**
-	 * Read the raw colours array from BB's option, returning an always-indexed
-	 * array (never an object).
-	 *
-	 * @since  3.8.0
-	 * @return array[]
-	 */
-	private function get_raw_colors() {
-		$settings = get_option( self::BB_OPTION_KEY, array() );
-
-		if ( is_object( $settings ) && isset( $settings->colors ) ) {
-			return isset( $settings->colors->items )
-				? (array) $settings->colors->items
-				: (array) $settings->colors;
-		}
-
-		if ( is_array( $settings ) && isset( $settings['colors'] ) ) {
-			return isset( $settings['colors']['items'] )
-				? (array) $settings['colors']['items']
-				: (array) $settings['colors'];
-		}
-
-		return array();
-	}
-
-	/**
-	 * Write the raw colours array back to BB's option, preserving the same
-	 * object shape that FLBuilderGlobalStyles::get_settings() expects.
-	 *
-	 * @since 3.8.0
-	 * @param array[] $colors Raw colour items.
-	 */
-	private function save_raw_colors( $colors ) {
-		$existing = get_option( self::BB_OPTION_KEY, array() );
-
-		if ( is_object( $existing ) ) {
-			if ( ! isset( $existing->colors ) ) {
-				$existing->colors = new stdClass();
-			}
-			if ( isset( $existing->colors->items ) ) {
-				$existing->colors->items = $colors;
-			} else {
-				$existing->colors = $colors;
-			}
-		} else {
-			if ( ! is_array( $existing ) ) {
-				$existing = array();
-			}
-			if ( isset( $existing['colors']['items'] ) ) {
-				$existing['colors']['items'] = $colors;
-			} else {
-				$existing['colors'] = $colors;
-			}
-		}
-
-		update_option( self::BB_OPTION_KEY, $existing );
-	}
-
-	/**
-	 * Check whether a slug already exists in the palette.
-	 *
-	 * @since  3.8.0
-	 * @param  array[] $colors Raw colour items.
-	 * @param  string  $slug   Slug to check.
-	 * @return bool
-	 */
-	private function slug_exists( $colors, $slug ) {
-		foreach ( $colors as $item ) {
-			if ( isset( $item['slug'] ) && $item['slug'] === $slug ) {
-				return true;
-			}
-		}
-		return false;
-	}
 
 	/**
 	 * Restrict a slug to characters safe for CSS variable names and HTML attrs.
@@ -268,31 +229,32 @@ class BBCustomDarkMode_Colors {
 	}
 
 	/**
-	 * Normalise a hex colour to `#rrggbb` format.
+	 * Normalise a colour value — hex gets # prefix if missing, everything
+	 * else (rgb, rgba, hsl) is returned unchanged.
 	 *
 	 * @since  3.8.0
 	 * @param  string $color Raw colour value.
 	 * @return string
 	 */
-	private function normalize_hex( $color ) {
+	private function normalize_color( $color ) {
 		$color = trim( $color );
 
-		// Already valid 6-char hex?
-		if ( preg_match( '/^#[a-fA-F0-9]{6}$/', $color ) ) {
+		// Already has # prefix — valid hex.
+		if ( preg_match( '/^#[a-fA-F0-9]{3,8}$/', $color ) ) {
 			return $color;
 		}
 
-		// 3-char shorthand — expand to 6.
-		if ( preg_match( '/^#[a-fA-F0-9]{3}$/', $color ) ) {
-			return '#' . $color[1] . $color[1] . $color[2] . $color[2] . $color[3] . $color[3];
+		// rgb/rgba/hsl/hsla — leave untouched.
+		if ( preg_match( '/^(rgb|rgba|hsl|hsla)\(/', $color ) ) {
+			return $color;
 		}
 
-		// Missing # — prepend.
-		if ( preg_match( '/^[a-fA-F0-9]{6}$/', $color ) ) {
+		// Raw hex without # — prepend #.
+		if ( preg_match( '/^[a-fA-F0-9]{3,8}$/', $color ) ) {
 			return '#' . $color;
 		}
 
-		// Treat anything else as #000.
-		return '#000000';
+		// Fallback: return original.
+		return $color;
 	}
 }

@@ -61,14 +61,14 @@ class BBCustomDarkMode_Frontend {
 	 */
 	public function inject_anti_flash_script() {
 		$saved = (array) get_option( $this->option_name, array() );
-		$sync  = ! empty( $saved['system_sync'] ) ? 'true' : 'false';
+		$sync  = ! empty( $saved['system_sync'] ) ? 1 : 0;
 		?>
 		<script>
 		(function() {
 			try {
 				var stored  = localStorage.getItem('bb_pref_theme'); // 'dark' | 'light' | null
 				var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-				var sync    = <?php echo $sync; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- hardcoded 'true'/'false' ?>;
+				var sync    = <?php echo (int) $sync; ?>;
 
 				var shouldBeDark = (stored === 'dark') ||
 								   (stored === null && sync && sysDark);
@@ -246,7 +246,7 @@ body.dark-mode .bb-dm-toggle .moon-icon { display: block; }
 			$this->script_handle,
 			plugin_dir_url( dirname( __FILE__ ) ) . 'assets/js/frontend.js',
 			array( 'jquery' ),
-			'3.8.0',
+			'3.9.0',
 			true
 		);
 

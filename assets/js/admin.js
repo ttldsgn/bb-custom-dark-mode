@@ -2,12 +2,12 @@
  * BB Custom Dark Mode — Admin Script
  *
  * Global colors manager, swatch syncing, sortable repeater rows, and
- * Iris colour picker integration.
+ * WordPress Iris color picker with alpha support.
  *
  * @package BB_Custom_Dark_Mode
  */
 
-/* global jQuery, wp, bbDarkModeAdmin */
+/* global jQuery, bbDarkModeAdmin */
 (function ($) {
 	'use strict';
 
@@ -25,15 +25,14 @@
 			return '';
 		}
 		val = val.trim();
-		return (val.indexOf('rgb') !== -1 || val.indexOf('#') === 0) ? val : '#' + val;
+		if (val.indexOf('rgb') !== -1 || val.indexOf('hsl') !== -1 || val.indexOf('#') === 0) {
+			return val;
+		}
+		return '#' + val;
 	}
 
 	/**
 	 * Update the nearest .bb-swatch sibling for a given <select>.
-	 *
-	 * We walk up one parent level (the immediate <div> wrapping both the
-	 * swatch and the select) so we only touch the swatch paired with this
-	 * dropdown, never the one belonging to the sibling Light/Dark column.
 	 *
 	 * @param {HTMLSelectElement} selectElement The select that changed.
 	 */
@@ -47,8 +46,7 @@
 
 	/**
 	 * Reindex all [pairs][N] field names inside #bb-repeater after a
-	 * drag-drop reorder or row addition/removal so the submitted order
-	 * matches the visual order on screen.
+	 * drag-drop reorder or row addition/removal.
 	 */
 	function reindexPairs() {
 		$('#bb-repeater .bb-dm-row').each(function (i) {
@@ -60,6 +58,67 @@
 			});
 		});
 	}
+
+	/**
+	 * Reindex all [vars][N] field names inside #var-repeater after a
+	 * row addition/removal.
+	 */
+	function reindexVars() {
+		$('#var-repeater .bb-dm-row').each(function (i) {
+			$(this).find('input, select').each(function () {
+				var n = $(this).attr('name');
+				if (n) {
+					$(this).attr('name', n.replace(/\[vars\]\[\d+\]/, '[vars][' + i + ']'));
+				}
+			});
+		});
+	}
+
+	// =========================================================================
+	// Tab Switching — matching Client AI plugin behaviour
+	// =========================================================================
+
+	// Safe SessionStorage retrieval to prevent SecurityError in restricted browsers/iframes
+	var activeTab = 'tab-global-colours';
+	try {
+		activeTab = sessionStorage.getItem('bbdm_active_tab') || 'tab-global-colours';
+	} catch (e) {
+		console.warn('SessionStorage block detected, falling back to default tab.', e);
+	}
+
+	function switchTab(tabId) {
+		$('.bbdm-tab-link').removeClass('active');
+		$('.bbdm-tab-link[data-tab="' + tabId + '"]').addClass('active');
+		$('.bbdm-tab-panel').removeClass('active').hide();
+		$('#' + tabId).addClass('active').show();
+
+		try {
+			sessionStorage.setItem('bbdm_active_tab', tabId);
+		} catch (e) {}
+	}
+
+	// Active progressive enhancement once jQuery loads successfully
+	$('.bbdm-wrap').addClass('bbdm-js-active');
+
+	$('.bbdm-tab-link').on('click', function (e) {
+		e.preventDefault();
+		var tabId = $(this).data('tab');
+		switchTab(tabId);
+	});
+
+	// Initialize display configuration state safely
+	switchTab(activeTab);
+
+	// -------------------------------------------------------------------------
+	// Iris Color Picker Initialization
+	// -------------------------------------------------------------------------
+	$('.bb-dm-iris-picker').wpColorPicker({
+		mode: 'hsl',
+		width: 280,
+		change: function () {
+			// Triggered when color changes.
+		}
+	});
 
 	// -------------------------------------------------------------------------
 	// Colour-swatch initialisation & live-update
@@ -118,6 +177,8 @@
 			$(this).closest('.bb-dm-row').remove();
 			if ($container.attr('id') === 'bb-repeater') {
 				reindexPairs();
+			} else if ($container.attr('id') === 'var-repeater') {
+				reindexVars();
 			}
 		}
 	});
@@ -133,24 +194,18 @@
 	 * @param {Array} colors Array of { name, slug, color } objects.
 	 */
 	function refreshAllColorDropdowns(colors) {
-		if (!colors || !colors.length) {
-			return;
-		}
+		colors = colors || [];
 
-		// Build the new <option> HTML with slugs mapped to their hex values.
 		var optionsHtml = '<option value="" data-color="">&hellip;</option>';
 		$.each(colors, function (i, c) {
 			optionsHtml += '<option value="' + c.slug + '" data-color="' + c.color + '">' + c.name + '</option>';
 		});
 
-		// For every .bb-color-select on the page, swap inner options while
-		// preserving the currently selected value (it will flash-reset if
-		// the slug no longer exists, which is benign).
 		$('.bb-color-select').each(function () {
 			var $select  = $(this);
 			var oldVal   = $select.val();
 			$select.html(optionsHtml);
-			$select.val(oldVal); // gracefully resets to '' if oldVal not in new list
+			$select.val(oldVal);
 			updateSwatch(this);
 		});
 	}
@@ -184,8 +239,8 @@
 				'<td class="col-slug"><code>' + c.slug + '</code></td>' +
 				'<td class="col-hex">' + c.color + '</td>' +
 				'<td class="row-actions">' +
-				'<a class="bb-dm-edit-color" data-slug="' + c.slug + '">Edit</a> | ' +
-				'<a class="bb-dm-delete-color" data-slug="' + c.slug + '">Delete</a>' +
+				'<button type="button" class="bb-dm-edit-color" data-slug="' + c.slug + '">Edit</button> | ' +
+				'<button type="button" class="bb-dm-delete-color" data-slug="' + c.slug + '">Delete</button>' +
 				'</td>' +
 				'</tr>';
 		});
@@ -243,9 +298,11 @@
 		colorAjax('add', { name: name, color: hex, slug: slug }, function (res) {
 			refreshAllColorDropdowns(res.data.colors);
 			renderColorsTable(res.data.colors);
+			// Reset the form fields.
 			$('#bb-dm-new-color-name').val('');
-			$('#bb-dm-new-color-hex').val('');
 			$('#bb-dm-new-color-slug').val('');
+			// Reset Iris to default color.
+			$('#bb-dm-new-color-hex').iris('color', '#ffffff');
 		});
 	});
 
@@ -256,7 +313,9 @@
 		var name   = $row.find('.col-name').text();
 		var hex    = $row.find('.col-hex').text();
 
-		// Replace row with inline edit fields.
+		// Store original row HTML before replacing for cancel.
+		$row.data('bbdm-original-html', $row.html());
+
 		$row.addClass('bb-dm-inline-edit').html(
 			'<td><span class="color-swatch" style="background-color:' +
 			formatColor(hex) + '"></span></td>' +
@@ -264,18 +323,20 @@
 			'<td><code>' + slug + '</code></td>' +
 			'<td><input type="text" class="edit-hex" value="' + hex + '"></td>' +
 			'<td class="row-actions">' +
-			'<a class="bb-dm-save-edit" data-slug="' + slug + '">Save</a> | ' +
-			'<a class="bb-dm-cancel-edit">Cancel</a>' +
+			'<button type="button" class="bb-dm-save-edit" data-slug="' + slug + '">Save</button> | ' +
+			'<button type="button" class="bb-dm-cancel-edit">Cancel</button>' +
 			'</td>'
 		);
 	});
 
 	// -- Cancel inline edit ------------------------------------------------
 	$(document).on('click', '.bb-dm-cancel-edit', function () {
-		// Re-render the full table to restore the static view.
-		colorAjax('list', {}, function (res) {
-			renderColorsTable(res.data.colors);
-		});
+		var $row = $(this).closest('tr');
+		var original = $row.data('bbdm-original-html');
+		if (original) {
+			$row.removeClass('bb-dm-inline-edit').html(original);
+			$row.removeData('bbdm-original-html');
+		}
 	});
 
 	// -- Save inline edit --------------------------------------------------
@@ -307,15 +368,5 @@
 			renderColorsTable(res.data.colors);
 		});
 	});
-
-	// -- Iris colour picker on the hex field -------------------------------
-	if (typeof $.fn.wpColorPicker === 'function') {
-		$('#bb-dm-new-color-hex').wpColorPicker({
-			defaultColor: '#ffffff',
-			change: function () {
-				// No-op; the value is read from the field on submit.
-			}
-		});
-	}
 
 }(jQuery));

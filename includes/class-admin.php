@@ -220,19 +220,31 @@ class BBCustomDarkMode_Admin {
 		wp_enqueue_style(
 			'bb-dark-mode-admin',
 			plugin_dir_url( dirname( __FILE__ ) ) . 'assets/css/admin.css',
-			array(),
-			'3.8.0'
+			array( 'wp-color-picker' ),
+			'3.9.0'
 		);
 
-		// Iris colour picker (core WP).
+		// WordPress color picker styles (Iris).
 		wp_enqueue_style( 'wp-color-picker' );
+
+		// WordPress color picker script (Iris).
+		wp_enqueue_script( 'wp-color-picker' );
+
+		// Alpha-channel extension for wp-color-picker.
+		wp_enqueue_script(
+			'bb-dark-mode-color-picker-alpha',
+			plugin_dir_url( dirname( __FILE__ ) ) . 'assets/js/wp-color-picker-alpha.min.js',
+			array( 'wp-color-picker' ),
+			'3.9.0',
+			true
+		);
 
 		// Admin script.
 		wp_enqueue_script(
 			'bb-dark-mode-admin',
 			plugin_dir_url( dirname( __FILE__ ) ) . 'assets/js/admin.js',
-			array( 'jquery', 'jquery-ui-sortable', 'wp-color-picker' ),
-			'3.8.0',
+			array( 'jquery', 'jquery-ui-sortable', 'wp-color-picker', 'bb-dark-mode-color-picker-alpha' ),
+			'3.9.0',
 			true
 		);
 
@@ -319,7 +331,7 @@ class BBCustomDarkMode_Admin {
 			<?php
 		};
 		?>
-		<div class="wrap">
+		<div class="wrap bbdm-wrap">
 			<h1>BB Custom Dark Mode Pro</h1>
 
 			<?php if ( empty( $colors ) ) : ?>
@@ -330,315 +342,335 @@ class BBCustomDarkMode_Admin {
 				</div>
 			<?php endif; ?>
 
-			<form method="post" action="options.php">
+			<!-- Horizontal Tab Navigation -->
+			<div class="bbdm-tabs-nav">
+				<button type="button" class="bbdm-tab-link active" data-tab="tab-global-colours">BB Global Colours</button>
+				<button type="button" class="bbdm-tab-link" data-tab="tab-colour-mapping">Colour Mapping</button>
+				<button type="button" class="bbdm-tab-link" data-tab="tab-settings-styling">Settings & Styling</button>
+			</div>
+
+			<form method="post" action="options.php" style="margin:0;padding:0;">
 				<?php settings_fields( 'bb_dark_mode_group' ); ?>
 
-				<!-- 0. Global Colours Manager -->
-				<div class="bb-dm-card">
-					<h2>0. Global Colours Manager</h2>
-					<p class="description">
-						Add, edit, or delete global colours directly from this page.
-						Changes are synced immediately with Beaver Builder's Global Styles.
-					</p>
+				<!-- ── TAB 1: BB GLOBAL COLOURS ── -->
+				<div id="tab-global-colours" class="bbdm-tab-panel active">
+					<div class="bb-dm-card bbdm-section">
+						<h2>Global Colours Manager</h2>
+						<p class="description">
+							Add, edit, or delete global colours directly from this page.
+							Changes are synced immediately with Beaver Builder's Global Styles.
+						</p>
 
-					<!-- Add colour form -->
-					<div class="bb-dm-color-form">
-						<div class="form-field">
-							<label for="bb-dm-new-color-name">Name</label>
-							<input type="text" id="bb-dm-new-color-name" placeholder="e.g. Primary Blue" class="regular-text">
+						<!-- Add colour form -->
+						<div class="bb-dm-color-form">
+							<div class="form-field form-field-name">
+								<label for="bb-dm-new-color-name">Name</label>
+								<input type="text" id="bb-dm-new-color-name" placeholder="e.g. Primary Blue" class="regular-text">
+							</div>
+							<div class="form-field form-field-color">
+								<label for="bb-dm-new-color-hex">Colour</label>
+								<input type="text" id="bb-dm-new-color-hex" value="#ffffff" class="bb-dm-iris-picker" data-alpha-enabled="true" data-default-color="#ffffff">
+								<p class="description">Click the swatch to open the colour picker, or type any CSS colour value (hex, rgb, rgba, hsl).</p>
+							</div>
+							<div class="form-field form-field-slug">
+								<label for="bb-dm-new-color-slug">Slug <em>(optional)</em></label>
+								<input type="text" id="bb-dm-new-color-slug" placeholder="auto-generated" class="regular-text">
+							</div>
+							<div class="form-field form-field-actions">
+								<label class="invisible-label">&nbsp;</label>
+								<div class="actions-row">
+									<button type="button" id="bb-dm-add-color-btn" class="button button-primary">
+										Add Global Colour
+									</button>
+									<span id="bb-dm-color-spinner" class="spinner bb-dm-spinner"></span>
+								</div>
+							</div>
 						</div>
-						<div class="form-field">
-							<label for="bb-dm-new-color-hex">Colour</label>
-							<input type="text" id="bb-dm-new-color-hex" value="#ffffff" class="bb-dm-color-picker">
-						</div>
-						<div class="form-field">
-							<label for="bb-dm-new-color-slug">Slug <em>(optional)</em></label>
-							<input type="text" id="bb-dm-new-color-slug" placeholder="auto-generated" class="regular-text">
-						</div>
-						<div class="form-field">
-							<label>&nbsp;</label>
-							<button type="button" id="bb-dm-add-color-btn" class="button button-primary">
-								Add Global Colour
-							</button>
-							<span id="bb-dm-color-spinner" class="spinner bb-dm-spinner"></span>
-						</div>
-					</div>
 
-					<!-- Existing colours table -->
-					<table class="bb-dm-colors-table">
-						<thead>
-							<tr>
-								<th>Swatch</th>
-								<th>Name</th>
-								<th>Slug</th>
-								<th>Hex</th>
-								<th>Actions</th>
-							</tr>
-						</thead>
-						<tbody id="bb-dm-colors-tbody">
-							<?php if ( empty( $colors ) ) : ?>
-								<tr class="no-items">
-									<td colspan="5">No global colours yet. Add one above.</td>
+						<!-- Existing colours table -->
+						<table class="bb-dm-colors-table">
+							<thead>
+								<tr>
+									<th>Swatch</th>
+									<th>Name</th>
+									<th>Slug</th>
+									<th>Hex</th>
+									<th>Actions</th>
 								</tr>
-							<?php else : ?>
-								<?php foreach ( $colors as $c ) : ?>
-									<tr data-slug="<?php echo esc_attr( $c['slug'] ); ?>">
-										<td>
-											<span class="color-swatch" style="background-color:<?php echo esc_attr( $c['color'] ); ?>"></span>
-										</td>
-										<td class="col-name"><?php echo esc_html( $c['name'] ); ?></td>
-										<td class="col-slug"><code><?php echo esc_html( $c['slug'] ); ?></code></td>
-										<td class="col-hex"><?php echo esc_html( $c['color'] ); ?></td>
-										<td class="row-actions">
-											<a class="bb-dm-edit-color" data-slug="<?php echo esc_attr( $c['slug'] ); ?>">Edit</a> |
-											<a class="bb-dm-delete-color" data-slug="<?php echo esc_attr( $c['slug'] ); ?>">Delete</a>
-										</td>
+							</thead>
+							<tbody id="bb-dm-colors-tbody">
+								<?php if ( empty( $colors ) ) : ?>
+									<tr class="no-items">
+										<td colspan="5">No global colours yet. Add one above.</td>
 									</tr>
-								<?php endforeach; ?>
-							<?php endif; ?>
-						</tbody>
-					</table>
-				</div>
-
-				<!-- 1. Site Background Mapping -->
-				<div class="bb-dm-card">
-					<h2>1. Site Background Mapping</h2>
-					<div class="bg-map-box">
-						<div>
-							<span class="bb-swatch"></span>
-							<?php
-							$render_select(
-								$this->option_name . '[bg][light]',
-								isset( $bg['light'] ) ? $bg['light'] : '',
-								'Light BG…'
-							);
-							?>
-						</div>
-						<span>&rarr;</span>
-						<div>
-							<span class="bb-swatch"></span>
-							<?php
-							$render_select(
-								$this->option_name . '[bg][dark]',
-								isset( $bg['dark'] ) ? $bg['dark'] : '',
-								'Dark BG…'
-							);
-							?>
-						</div>
+								<?php else : ?>
+									<?php foreach ( $colors as $c ) : ?>
+										<tr data-slug="<?php echo esc_attr( $c['slug'] ); ?>">
+											<td>
+												<span class="color-swatch" style="background-color:<?php echo esc_attr( $c['color'] ); ?>"></span>
+											</td>
+											<td class="col-name"><?php echo esc_html( $c['name'] ); ?></td>
+											<td class="col-slug"><code><?php echo esc_html( $c['slug'] ); ?></code></td>
+											<td class="col-hex"><?php echo esc_html( $c['color'] ); ?></td>
+											<td class="row-actions">
+												<button type="button" class="bb-dm-edit-color" data-slug="<?php echo esc_attr( $c['slug'] ); ?>">Edit</button> |
+												<button type="button" class="bb-dm-delete-color" data-slug="<?php echo esc_attr( $c['slug'] ); ?>">Delete</button>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								<?php endif; ?>
+							</tbody>
+						</table>
 					</div>
 				</div>
 
-				<!-- 2. Global Colour Mapping -->
-				<div class="bb-dm-card">
-					<h2>2. Global Colour Mapping</h2>
-					<div id="bb-repeater" class="color-container">
-						<?php foreach ( $pairs as $i => $pair ) : ?>
-							<div class="bb-dm-row is-sortable">
-								<span class="bb-dm-drag-handle" title="Drag to reorder" aria-hidden="true">&#8597;</span>
-								<div>
-									<span class="bb-swatch"></span>
-									<?php
-									$render_select(
-										$this->option_name . '[pairs][' . intval( $i ) . '][light]',
-										isset( $pair['light'] ) ? $pair['light'] : '',
-										'Select Light…'
-									);
-									?>
-								</div>
-								<span>&rarr;</span>
-								<div>
-									<span class="bb-swatch"></span>
-									<?php
-									$render_select(
-										$this->option_name . '[pairs][' . intval( $i ) . '][dark]',
-										isset( $pair['dark'] ) ? $pair['dark'] : '',
-										'Select Dark…'
-									);
-									?>
-								</div>
-								<span class="bb-dm-remove" role="button" tabindex="0">Remove</span>
+				<!-- ── TAB 2: COLOUR MAPPING ── -->
+				<div id="tab-colour-mapping" class="bbdm-tab-panel">
+					<!-- Site Background Mapping -->
+					<div class="bb-dm-card bbdm-section">
+						<h2>Site Background Mapping</h2>
+						<div class="bg-map-box">
+							<div>
+								<span class="bb-swatch"></span>
+								<?php
+								$render_select(
+									$this->option_name . '[bg][light]',
+									isset( $bg['light'] ) ? $bg['light'] : '',
+									'Light BG…'
+								);
+								?>
 							</div>
-						<?php endforeach; ?>
+							<span>&rarr;</span>
+							<div>
+								<span class="bb-swatch"></span>
+								<?php
+								$render_select(
+									$this->option_name . '[bg][dark]',
+									isset( $bg['dark'] ) ? $bg['dark'] : '',
+									'Dark BG…'
+								);
+								?>
+							</div>
+						</div>
 					</div>
-					<button type="button" class="button add-row-btn" data-target="bb-repeater">+ Add Pair</button>
+
+					<!-- Global Colour Mapping -->
+					<div class="bb-dm-card bbdm-section">
+						<h2>Global Colour Mapping</h2>
+						<div id="bb-repeater" class="color-container">
+							<?php foreach ( $pairs as $i => $pair ) : ?>
+								<div class="bb-dm-row is-sortable">
+									<span class="bb-dm-drag-handle" title="Drag to reorder" aria-hidden="true">&#8597;</span>
+									<div>
+										<span class="bb-swatch"></span>
+										<?php
+										$render_select(
+											$this->option_name . '[pairs][' . intval( $i ) . '][light]',
+											isset( $pair['light'] ) ? $pair['light'] : '',
+											'Select Light…'
+										);
+										?>
+									</div>
+									<span>&rarr;</span>
+									<div>
+										<span class="bb-swatch"></span>
+										<?php
+										$render_select(
+											$this->option_name . '[pairs][' . intval( $i ) . '][dark]',
+											isset( $pair['dark'] ) ? $pair['dark'] : '',
+											'Select Dark…'
+										);
+										?>
+									</div>
+									<button type="button" class="bb-dm-remove">Remove</button>
+								</div>
+							<?php endforeach; ?>
+						</div>
+						<button type="button" class="button add-row-btn" data-target="bb-repeater">+ Add Pair</button>
+					</div>
+
+					<!-- Manual CSS Variable Bridge -->
+					<div class="bb-dm-card bbdm-section">
+						<h2>Manual CSS Variable Bridge</h2>
+						<div id="var-repeater" class="color-container">
+							<?php foreach ( $vars as $i => $v ) : ?>
+								<div class="bb-dm-row">
+									<input type="text"
+										name="<?php echo esc_attr( $this->option_name ); ?>[vars][<?php echo intval( $i ); ?>][custom]"
+										value="<?php echo esc_attr( isset( $v['custom'] ) ? $v['custom'] : '' ); ?>"
+										placeholder="--variable-name"
+										class="regular-text">
+									<span>&rarr;</span>
+									<div>
+										<span class="bb-swatch"></span>
+										<?php
+										$render_select(
+											$this->option_name . '[vars][' . intval( $i ) . '][dark]',
+											isset( $v['dark'] ) ? $v['dark'] : '',
+											'Target Dark…'
+										);
+										?>
+									</div>
+									<button type="button" class="bb-dm-remove">Remove</button>
+								</div>
+							<?php endforeach; ?>
+						</div>
+						<button type="button" class="button add-row-btn" data-target="var-repeater">+ Add Bridge</button>
+					</div>
 				</div>
 
-				<!-- 3. Manual CSS Variable Bridge -->
-				<div class="bb-dm-card">
-					<h2>3. Manual CSS Variable Bridge</h2>
-					<div id="var-repeater" class="color-container">
-						<?php foreach ( $vars as $i => $v ) : ?>
-							<div class="bb-dm-row">
-								<input type="text"
-									name="<?php echo esc_attr( $this->option_name ); ?>[vars][<?php echo intval( $i ); ?>][custom]"
-									value="<?php echo esc_attr( isset( $v['custom'] ) ? $v['custom'] : '' ); ?>"
-									placeholder="--variable-name"
-									class="regular-text">
-								<span>&rarr;</span>
-								<div>
+				<!-- ── TAB 3: SETTINGS & STYLING ── -->
+				<div id="tab-settings-styling" class="bbdm-tab-panel">
+					<!-- Settings & Exclusions -->
+					<div class="bb-dm-card bbdm-section">
+						<h2>Settings & Exclusions</h2>
+						<label style="display:block;margin-bottom:15px;">
+							<input type="checkbox"
+								name="<?php echo esc_attr( $this->option_name ); ?>[system_sync]"
+								value="1"
+								<?php checked( isset( $saved['system_sync'] ) ? $saved['system_sync'] : 0, 1 ); ?>>
+							Enable System Preference Sync
+						</label>
+						<table class="form-table">
+							<tr>
+								<th>Exclude Post Types</th>
+								<td>
+									<?php foreach ( $post_types as $pt ) : ?>
+										<label style="display:block;margin-bottom:5px;">
+											<input type="checkbox"
+												name="<?php echo esc_attr( $this->option_name ); ?>[excluded_types][]"
+												value="<?php echo esc_attr( $pt->name ); ?>"
+												<?php checked( in_array( $pt->name, (array) ( isset( $saved['excluded_types'] ) ? $saved['excluded_types'] : array() ), true ), true ); ?>>
+											<?php echo esc_html( $pt->label ); ?>
+										</label>
+									<?php endforeach; ?>
+								</td>
+							</tr>
+							<tr>
+								<th>Exclude by IDs</th>
+								<td>
+									<input type="text"
+										name="<?php echo esc_attr( $this->option_name ); ?>[excluded_ids]"
+										value="<?php echo esc_attr( isset( $saved['excluded_ids'] ) ? $saved['excluded_ids'] : '' ); ?>"
+										placeholder="e.g. 12, 45"
+										class="regular-text">
+								</td>
+							</tr>
+						</table>
+					</div>
+
+					<!-- Toggle Button Styling -->
+					<div class="bb-dm-card bbdm-section">
+						<h2>Toggle Button Styling</h2>
+						<table class="form-table">
+							<tr>
+								<th>Shape</th>
+								<td>
+									<select name="<?php echo esc_attr( $this->option_name ); ?>[btn][shape]">
+										<option value="round"  <?php selected( $btn['shape'], 'round' ); ?>>Round</option>
+										<option value="square" <?php selected( $btn['shape'], 'square' ); ?>>Square</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<th>Size (px)</th>
+								<td>
+									<input type="number"
+										name="<?php echo esc_attr( $this->option_name ); ?>[btn][size]"
+										value="<?php echo esc_attr( $btn['size'] ); ?>"
+										min="10" max="200"
+										class="small-text">
+								</td>
+							</tr>
+							<tr>
+								<th>Background</th>
+								<td>
 									<span class="bb-swatch"></span>
 									<?php
 									$render_select(
-										$this->option_name . '[vars][' . intval( $i ) . '][dark]',
-										isset( $v['dark'] ) ? $v['dark'] : '',
-										'Target Dark…'
+										$this->option_name . '[btn][bg]',
+										$btn['bg'],
+										'Transparent'
 									);
 									?>
-								</div>
-								<span class="bb-dm-remove" role="button" tabindex="0">Remove</span>
-							</div>
-						<?php endforeach; ?>
+								</td>
+							</tr>
+							<tr>
+								<th>Icon Colour</th>
+								<td>
+									<span class="bb-swatch"></span>
+									<?php
+									$render_select(
+										$this->option_name . '[btn][icon]',
+										$btn['icon'],
+										'Default'
+									);
+									?>
+								</td>
+							</tr>
+							<tr>
+								<th>Border Colour</th>
+								<td>
+									<span class="bb-swatch"></span>
+									<?php
+									$render_select(
+										$this->option_name . '[btn][border]',
+										$btn['border'],
+										'None'
+									);
+									?>
+								</td>
+							</tr>
+							<tr><td colspan="2"><hr style="border:none;border-top:1px solid #ccd0d4;margin:4px 0;"></td></tr>
+							<tr>
+								<th>Background <em>(hover)</em></th>
+								<td>
+									<span class="bb-swatch"></span>
+									<?php
+									$render_select(
+										$this->option_name . '[btn][bg_hover]',
+										$btn['bg_hover'],
+										'Transparent'
+									);
+									?>
+								</td>
+							</tr>
+							<tr>
+								<th>Icon Colour <em>(hover)</em></th>
+								<td>
+									<span class="bb-swatch"></span>
+									<?php
+									$render_select(
+										$this->option_name . '[btn][icon_hover]',
+										$btn['icon_hover'],
+										'Default'
+									);
+									?>
+								</td>
+							</tr>
+							<tr>
+								<th>Border Colour <em>(hover)</em></th>
+								<td>
+									<span class="bb-swatch"></span>
+									<?php
+									$render_select(
+										$this->option_name . '[btn][border_hover]',
+										$btn['border_hover'],
+										'None'
+									);
+									?>
+								</td>
+							</tr>
+						</table>
 					</div>
-					<button type="button" class="button add-row-btn" data-target="var-repeater">+ Add Bridge</button>
 				</div>
 
-				<!-- 4. Settings & Exclusions -->
-				<div class="bb-dm-card">
-					<h2>4. Settings & Exclusions</h2>
-					<label style="display:block;margin-bottom:15px;">
-						<input type="checkbox"
-							name="<?php echo esc_attr( $this->option_name ); ?>[system_sync]"
-							value="1"
-							<?php checked( isset( $saved['system_sync'] ) ? $saved['system_sync'] : 0, 1 ); ?>>
-						Enable System Preference Sync
-					</label>
-					<table class="form-table">
-						<tr>
-							<th>Exclude Post Types</th>
-							<td>
-								<?php foreach ( $post_types as $pt ) : ?>
-									<label style="display:block;margin-bottom:5px;">
-										<input type="checkbox"
-											name="<?php echo esc_attr( $this->option_name ); ?>[excluded_types][]"
-											value="<?php echo esc_attr( $pt->name ); ?>"
-											<?php checked( in_array( $pt->name, (array) ( isset( $saved['excluded_types'] ) ? $saved['excluded_types'] : array() ), true ), true ); ?>>
-										<?php echo esc_html( $pt->label ); ?>
-									</label>
-								<?php endforeach; ?>
-							</td>
-						</tr>
-						<tr>
-							<th>Exclude by IDs</th>
-							<td>
-								<input type="text"
-									name="<?php echo esc_attr( $this->option_name ); ?>[excluded_ids]"
-									value="<?php echo esc_attr( isset( $saved['excluded_ids'] ) ? $saved['excluded_ids'] : '' ); ?>"
-									placeholder="e.g. 12, 45"
-									class="regular-text">
-							</td>
-						</tr>
-					</table>
+				<div class="bbdm-settings-submit-wrapper">
+					<?php submit_button(); ?>
 				</div>
-
-				<!-- 5. Toggle Button Styling -->
-				<div class="bb-dm-card">
-					<h2>5. Toggle Button Styling</h2>
-					<table class="form-table">
-						<tr>
-							<th>Shape</th>
-							<td>
-								<select name="<?php echo esc_attr( $this->option_name ); ?>[btn][shape]">
-									<option value="round"  <?php selected( $btn['shape'], 'round' ); ?>>Round</option>
-									<option value="square" <?php selected( $btn['shape'], 'square' ); ?>>Square</option>
-								</select>
-							</td>
-						</tr>
-						<tr>
-							<th>Size (px)</th>
-							<td>
-								<input type="number"
-									name="<?php echo esc_attr( $this->option_name ); ?>[btn][size]"
-									value="<?php echo esc_attr( $btn['size'] ); ?>"
-									min="10" max="200"
-									class="small-text">
-							</td>
-						</tr>
-						<tr>
-							<th>Background</th>
-							<td>
-								<span class="bb-swatch"></span>
-								<?php
-								$render_select(
-									$this->option_name . '[btn][bg]',
-									$btn['bg'],
-									'Transparent'
-								);
-								?>
-							</td>
-						</tr>
-						<tr>
-							<th>Icon Colour</th>
-							<td>
-								<span class="bb-swatch"></span>
-								<?php
-								$render_select(
-									$this->option_name . '[btn][icon]',
-									$btn['icon'],
-									'Default'
-								);
-								?>
-							</td>
-						</tr>
-						<tr>
-							<th>Border Colour</th>
-							<td>
-								<span class="bb-swatch"></span>
-								<?php
-								$render_select(
-									$this->option_name . '[btn][border]',
-									$btn['border'],
-									'None'
-								);
-								?>
-							</td>
-						</tr>
-						<tr><td colspan="2"><hr style="border:none;border-top:1px solid #ccd0d4;margin:4px 0;"></td></tr>
-						<tr>
-							<th>Background <em>(hover)</em></th>
-							<td>
-								<span class="bb-swatch"></span>
-								<?php
-								$render_select(
-									$this->option_name . '[btn][bg_hover]',
-									$btn['bg_hover'],
-									'Transparent'
-								);
-								?>
-							</td>
-						</tr>
-						<tr>
-							<th>Icon Colour <em>(hover)</em></th>
-							<td>
-								<span class="bb-swatch"></span>
-								<?php
-								$render_select(
-									$this->option_name . '[btn][icon_hover]',
-									$btn['icon_hover'],
-									'Default'
-								);
-								?>
-							</td>
-						</tr>
-						<tr>
-							<th>Border Colour <em>(hover)</em></th>
-							<td>
-								<span class="bb-swatch"></span>
-								<?php
-								$render_select(
-									$this->option_name . '[btn][border_hover]',
-									$btn['border_hover'],
-									'None'
-								);
-								?>
-							</td>
-						</tr>
-					</table>
-				</div>
-
-				<?php submit_button(); ?>
 			</form>
 
-			<!-- Export / Import — separate from the settings form -->
+			<!-- Export / Import — below the tab group -->
 			<div class="bb-dm-card">
 				<h2>Export / Import Settings</h2>
 				<p>
@@ -821,6 +853,13 @@ class BBCustomDarkMode_Admin {
 				}
 				$result = $this->colors->delete_color( $slug );
 				break;
+		}
+
+		if ( false === $result ) {
+			wp_send_json_error(
+				array( 'message' => 'Operation failed. The colour may already exist, or the slug was not found.' ),
+				400
+			);
 		}
 
 		wp_send_json_success(

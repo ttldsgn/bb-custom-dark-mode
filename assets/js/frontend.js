@@ -11,7 +11,11 @@
 	'use strict';
 
 	var config  = window.bbDarkModeConfig || { systemSync: 0 };
-	var sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+	var mqDark  = window.matchMedia('(prefers-color-scheme: dark)');
+
+	function sysIsDark() {
+		return mqDark.matches;
+	}
 
 	/**
 	 * Toggle dark mode on/off.
@@ -31,7 +35,7 @@
 		var isDark = $('body').toggleClass('dark-mode').hasClass('dark-mode');
 		$('.bb-dm-toggle').attr('aria-pressed', String(isDark));
 		try {
-			if (config.systemSync && isDark === sysDark) {
+			if (config.systemSync && isDark === sysIsDark()) {
 				// User toggled back to match system — let system sync take over again.
 				localStorage.removeItem('bb_pref_theme');
 			} else {
@@ -51,7 +55,7 @@
 
 		// Three-state check — mirrors the anti-flash script exactly.
 		var shouldBeDark = (stored === 'dark') ||
-						   (stored === null && config.systemSync && sysDark);
+						   (stored === null && config.systemSync && sysIsDark());
 
 		if (shouldBeDark) {
 			$('body').addClass('dark-mode');
@@ -60,7 +64,8 @@
 
 		// Keep in sync if the OS preference changes while the page is open.
 		if (config.systemSync) {
-			window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+			// addEventListener with addListener fallback for Safari 13 and older.
+			var changeHandler = function (e) {
 				var manualPref = null;
 				try {
 					manualPref = localStorage.getItem('bb_pref_theme');
@@ -70,7 +75,13 @@
 					$('body').toggleClass('dark-mode', e.matches);
 					$('.bb-dm-toggle').attr('aria-pressed', String(e.matches));
 				}
-			});
+			};
+
+			if (typeof mqDark.addEventListener === 'function') {
+				mqDark.addEventListener('change', changeHandler);
+			} else if (typeof mqDark.addListener === 'function') {
+				mqDark.addListener(changeHandler);
+			}
 		}
 	});
 
