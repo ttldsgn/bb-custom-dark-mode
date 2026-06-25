@@ -260,10 +260,10 @@
 }
 
 /* =========================================================================
-   Tab Navigation — matching Client AI plugin styling
+   Tab Navigation
    ========================================================================= */
 
-/* Constrain width to match Client AI */
+/* Constrain width */
 .bbdm-wrap {
 	max-width: 980px;
 }
@@ -342,7 +342,7 @@
 }
 
 /* =========================================================================
-   Section Cards — matching Client AI .aicb-section styling
+   Section Cards
    ========================================================================= */
 .bbdm-section {
 	background: #fff;

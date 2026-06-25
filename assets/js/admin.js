@@ -75,7 +75,7 @@
 	}
 
 	// =========================================================================
-	// Tab Switching — matching Client AI plugin behaviour
+	// Tab Switching
 	// =========================================================================
 
 	// Safe SessionStorage retrieval to prevent SecurityError in restricted browsers/iframes
