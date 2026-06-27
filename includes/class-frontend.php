@@ -247,7 +247,7 @@ body.dark-mode .bb-dm-toggle .moon-icon { display: block; }
 			$this->script_handle,
 			plugin_dir_url( dirname( __FILE__ ) ) . 'assets/js/frontend.js',
 			array( 'jquery' ),
-			'3.9.0',
+			'3.9.1',
 			true
 		);
 
