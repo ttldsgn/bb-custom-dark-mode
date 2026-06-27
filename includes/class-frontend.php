@@ -164,7 +164,7 @@ class BBCustomDarkMode_Frontend {
 			$dark  = $this->sanitize_slug( isset( $pair['dark'] ) ? $pair['dark'] : '' );
 			if ( '' !== $light && '' !== $dark ) {
 				$css .= "  --fl-global-{$light}: var(--fl-global-{$dark}) !important;\n";
-				$css .= "  --wp--preset--color--{$light}: var(--wp--preset--color--{$dark}) !important;\n";
+				$css .= "  --wp--preset--color--{$light}: var(--fl-global-{$dark}) !important;\n";
 			}
 		}
 
