@@ -4,6 +4,12 @@ All notable changes to BB Custom Dark Mode are documented here.
 
 ---
 
+## [3.9.1] — 2026-06-27
+
+### Fixed
+- Resolved an issue where the toggle button could retain an incorrect
+  state after rapid toggling under certain browser conditions.
+
 ## [3.9.0] — 2026-06-25
 
 ### Added

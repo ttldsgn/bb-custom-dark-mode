@@ -2,7 +2,7 @@
 
 A pro-grade dark mode engine for [Beaver Builder](https://www.wpbeaverbuilder.com/) that maps your existing Global Colour palette to dark-mode equivalents — no hardcoded hex values, no separate colour management.
 
-![Version](https://img.shields.io/badge/version-3.9.0-blue)
+![Version](https://img.shields.io/badge/version-3.9.1-blue)
 ![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-informational)
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B-informational)
 ![License](https://img.shields.io/badge/license-GPL--2.0-green)

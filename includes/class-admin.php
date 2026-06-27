@@ -870,7 +870,7 @@ class BBCustomDarkMode_Admin {
 	 * @return string
 	 */
 	private function sanitize_slug( $value ) {
-		return preg_replace( '/[^a-zA-Z0-9\-_]/', '', $value );
+		return strtolower( preg_replace( '/[^a-zA-Z0-9\-_]/', '', $value ) );
 	}
 
 	/**

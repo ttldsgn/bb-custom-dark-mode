@@ -164,6 +164,7 @@ class BBCustomDarkMode_Frontend {
 			$dark  = $this->sanitize_slug( isset( $pair['dark'] ) ? $pair['dark'] : '' );
 			if ( '' !== $light && '' !== $dark ) {
 				$css .= "  --fl-global-{$light}: var(--fl-global-{$dark}) !important;\n";
+				$css .= "  --wp--preset--color--{$light}: var(--wp--preset--color--{$dark}) !important;\n";
 			}
 		}
 
@@ -309,7 +310,7 @@ body.dark-mode .bb-dm-toggle .moon-icon { display: block; }
 	 * @return string
 	 */
 	private function sanitize_slug( $value ) {
-		return preg_replace( '/[^a-zA-Z0-9\-_]/', '', $value );
+		return strtolower( preg_replace( '/[^a-zA-Z0-9\-_]/', '', $value ) );
 	}
 
 	/**

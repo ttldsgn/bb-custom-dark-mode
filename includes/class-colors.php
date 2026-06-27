@@ -53,7 +53,7 @@ class BBCustomDarkMode_Colors {
 			}
 
 			// Use stored slug if present, otherwise derive from label.
-			$slug = isset( $data['slug'] ) ? $data['slug'] : FLBuilderGlobalStyles::label_to_key( $label );
+			$slug = strtolower( isset( $data['slug'] ) ? $data['slug'] : FLBuilderGlobalStyles::label_to_key( $label ) );
 
 			// Normalise hex missing # for display only (BB sometimes stores raw hex).
 			$color_display = $color;
@@ -225,7 +225,7 @@ class BBCustomDarkMode_Colors {
 	 * @return string
 	 */
 	private function sanitize_slug( $value ) {
-		return preg_replace( '/[^a-zA-Z0-9\-_]/', '', $value );
+		return strtolower( preg_replace( '/[^a-zA-Z0-9\-_]/', '', $value ) );
 	}
 
 	/**
